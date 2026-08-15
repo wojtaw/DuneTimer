@@ -55,6 +55,18 @@
     border-color: var(--accent-active);
     box-shadow: 0 0 16px rgba(232, 84, 42, 0.35);
   }
+  .avatar {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--border);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .player.running .avatar {
+    border-color: var(--accent-active);
+    box-shadow: 0 0 12px rgba(232, 84, 42, 0.5);
+  }
   .name-input {
     width: 100%;
     background: transparent;
@@ -133,11 +145,14 @@
     return null;
   }
 
+  const DEFAULT_NAMES = ['Tomasino', 'Kiki', 'Mikiska', 'Wojtaw'];
+  const AVATARS = ['avatars/tomasino.jpg', 'avatars/kiki.jpg', 'avatars/mikiska.jpg', 'avatars/wojtaw.jpg'];
+
   function defaultState() {
     const players = [];
     for (let i = 0; i < NUM_PLAYERS; i++) {
       players.push({
-        name: 'Player ' + (i + 1),
+        name: DEFAULT_NAMES[i],
         elapsedMs: 0,
         running: false,
         startedAt: null
@@ -178,6 +193,11 @@
     const card = document.createElement('div');
     card.className = 'player';
 
+    const avatar = document.createElement('img');
+    avatar.className = 'avatar';
+    avatar.src = AVATARS[index];
+    avatar.alt = player.name;
+
     const nameInput = document.createElement('input');
     nameInput.className = 'name-input';
     nameInput.type = 'text';
@@ -185,6 +205,7 @@
     nameInput.maxLength = 30;
     nameInput.addEventListener('input', () => {
       state.players[index].name = nameInput.value;
+      avatar.alt = nameInput.value;
       saveState();
     });
 
@@ -209,6 +230,7 @@
       render();
     });
 
+    card.appendChild(avatar);
     card.appendChild(nameInput);
     card.appendChild(timeEl);
     card.appendChild(toggleBtn);
