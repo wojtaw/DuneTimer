@@ -20,7 +20,9 @@
   }
   body {
     margin: 0;
-    background: radial-gradient(circle at top, #2a1f14, #14100c 70%);
+    background:
+      url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4MDAgMTIwMCI+CiAgPGNpcmNsZSBjeD0iNjIwIiBjeT0iMTYwIiByPSIyNDAiIGZpbGw9IiNlODU0MmEiIG9wYWNpdHk9IjAuMDciLz4KICA8Y2lyY2xlIGN4PSI2MjAiIGN5PSIxNjAiIHI9IjExMCIgZmlsbD0iI2Q5OWI0YSIgb3BhY2l0eT0iMC4wOSIvPgogIDxnIGZpbGw9IiNmMGU2ZDgiIG9wYWNpdHk9IjAuMTIiPgogICAgPGNpcmNsZSBjeD0iNzAiIGN5PSI4MCIgcj0iMS42Ii8+CiAgICA8Y2lyY2xlIGN4PSIxNDAiIGN5PSIxODAiIHI9IjEuMiIvPgogICAgPGNpcmNsZSBjeD0iMjMwIiBjeT0iNjAiIHI9IjEuNCIvPgogICAgPGNpcmNsZSBjeD0iMzEwIiBjeT0iMTUwIiByPSIxLjEiLz4KICAgIDxjaXJjbGUgY3g9IjYwIiBjeT0iMjYwIiByPSIxLjMiLz4KICAgIDxjaXJjbGUgY3g9IjQwMCIgY3k9IjkwIiByPSIxLjUiLz4KICAgIDxjaXJjbGUgY3g9IjQ4MCIgY3k9IjIyMCIgcj0iMS4xIi8+CiAgICA8Y2lyY2xlIGN4PSIxODAiIGN5PSIzMjAiIHI9IjEuMiIvPgogICAgPGNpcmNsZSBjeD0iNzIwIiBjeT0iNzAiIHI9IjEuMyIvPgogICAgPGNpcmNsZSBjeD0iNzYwIiBjeT0iMjQwIiByPSIxLjEiLz4KICAgIDxjaXJjbGUgY3g9IjMwIiBjeT0iMTQwIiByPSIxLjEiLz4KICAgIDxjaXJjbGUgY3g9IjM1MCIgY3k9IjI3MCIgcj0iMS4zIi8+CiAgPC9nPgogIDxwYXRoIGQ9Ik0wLDY0MCBDMTUwLDU5MCAzMDAsNjcwIDQ1MCw2MjAgQzYwMCw1NzAgNzAwLDYzMCA4MDAsNTkwIEw4MDAsMTIwMCBMMCwxMjAwIFoiIGZpbGw9IiMxZjE3MTAiIG9wYWNpdHk9IjAuNSIvPgogIDxwYXRoIGQ9Ik0wLDc3MCBDMTgwLDcxMCAzMjAsODEwIDUwMCw3NTAgQzY1MCw3MDAgNzIwLDc3MCA4MDAsNzMwIEw4MDAsMTIwMCBMMCwxMjAwIFoiIGZpbGw9IiMyNjE5MGYiIG9wYWNpdHk9IjAuNTUiLz4KICA8cGF0aCBkPSJNMCw5MTAgQzIwMCw4NTAgMzgwLDk1MCA1NjAsODkwIEM2ODAsODUwIDc0MCw5MTAgODAwLDg4MCBMODAwLDEyMDAgTDAsMTIwMCBaIiBmaWxsPSIjMmQxZjEzIiBvcGFjaXR5PSIwLjYiLz4KICA8cGF0aCBkPSJNMCwxMDUwIEMyMjAsOTkwIDQyMCwxMDgwIDYwMCwxMDIwIEM3MDAsOTkwIDc2MCwxMDQwIDgwMCwxMDIwIEw4MDAsMTIwMCBMMCwxMjAwIFoiIGZpbGw9IiMzNTI2MTciIG9wYWNpdHk9IjAuNyIvPgo8L3N2Zz4K") bottom center / cover no-repeat fixed,
+      radial-gradient(circle at top, #2a1f14, #14100c 70%);
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     display: flex;
@@ -64,7 +66,11 @@
     border-radius: 50%;
     object-fit: cover;
     border: 3px solid var(--border);
-    transition: border-color 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s;
+  }
+  .avatar:active {
+    transform: scale(0.94);
   }
   .player.running .avatar {
     border-color: var(--accent-active);
@@ -374,6 +380,27 @@
     return player.elapsedMs;
   }
 
+  function toggleTimer(index) {
+    const now = Date.now();
+    const p = state.players[index];
+    const wasRunning = p.running;
+    state.players.forEach((other, otherIndex) => {
+      if (other.running) {
+        const durationMs = now - other.startedAt;
+        other.elapsedMs += durationMs;
+        other.running = false;
+        other.startedAt = null;
+        state.turns.push({ index: otherIndex, name: other.name, durationMs });
+      }
+    });
+    if (!wasRunning) {
+      p.running = true;
+      p.startedAt = now;
+    }
+    saveState();
+    render();
+  }
+
   function computeLongestTurn() {
     let best = null;
     state.turns.forEach(t => {
@@ -478,26 +505,8 @@
     const toggleBtn = document.createElement('button');
     toggleBtn.className = 'toggle-btn';
     toggleBtn.textContent = 'Start';
-    toggleBtn.addEventListener('click', () => {
-      const now = Date.now();
-      const p = state.players[index];
-      const wasRunning = p.running;
-      state.players.forEach((other, otherIndex) => {
-        if (other.running) {
-          const durationMs = now - other.startedAt;
-          other.elapsedMs += durationMs;
-          other.running = false;
-          other.startedAt = null;
-          state.turns.push({ index: otherIndex, name: other.name, durationMs });
-        }
-      });
-      if (!wasRunning) {
-        p.running = true;
-        p.startedAt = now;
-      }
-      saveState();
-      render();
-    });
+    toggleBtn.addEventListener('click', () => toggleTimer(index));
+    avatar.addEventListener('click', () => toggleTimer(index));
 
     card.appendChild(avatar);
     card.appendChild(nameInput);
