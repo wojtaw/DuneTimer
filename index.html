@@ -13,6 +13,8 @@
     --text: #f0e6d8;
     --text-dim: #a89a86;
     --border: #4a3a28;
+    --fight: #b3261e;
+    --fight-glow: rgba(179, 38, 30, 0.55);
   }
   * { box-sizing: border-box; }
   html, body {
@@ -117,6 +119,60 @@
   .toggle-btn.running {
     background: var(--accent-active);
     color: #fff;
+  }
+  .players.fight-mode .toggle-btn,
+  .players.fight-mode .avatar {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+  .turn-control {
+    width: 100%;
+    max-width: 560px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(0.4rem, 2vw, 0.6rem);
+    margin-top: clamp(0.6rem, 2.5vw, 1rem);
+  }
+  .next-player-btn {
+    width: 100%;
+    padding: clamp(0.7rem, 3vw, 1.1rem);
+    font-size: clamp(0.9rem, 3.5vw, 1.15rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    background: linear-gradient(90deg, var(--accent), var(--accent-active));
+    color: #1a1410;
+    transition: transform 0.1s, opacity 0.2s;
+  }
+  .next-player-btn:active {
+    transform: scale(0.97);
+  }
+  .next-player-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  .fight-btn {
+    width: 100%;
+    padding: clamp(0.6rem, 2.5vw, 0.9rem);
+    font-size: clamp(0.8rem, 3vw, 1rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border: 2px solid var(--fight);
+    border-radius: 10px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--fight);
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  }
+  .fight-btn.active {
+    background: var(--fight);
+    color: #fff;
+    box-shadow: 0 0 18px var(--fight-glow);
   }
   .stats {
     width: 100%;
@@ -413,6 +469,11 @@
 
 <div class="players" id="players"></div>
 
+<div class="turn-control">
+  <button class="next-player-btn" id="next-player">Next Player</button>
+  <button class="fight-btn" id="fight-toggle">Fight: Off</button>
+</div>
+
 <div class="stats" id="stats">
   <div class="stats-total">Total Game Time<strong id="total-time">00:00:00</strong></div>
   <div class="stat-chart" id="stat-chart"></div>
@@ -469,6 +530,10 @@
   const DEFAULT_NAMES = ['Tomasino', 'Kiki', 'Mikiska', 'Wojtaw'];
   const AVATARS = ['avatars/tomasino.jpg', 'avatars/kiki.jpg', 'avatars/mikiska.jpg', 'avatars/wojtaw.jpg'];
 
+  function defaultGameClock() {
+    return { elapsedMs: 0, running: false, startedAt: null };
+  }
+
   function defaultState() {
     const players = [];
     for (let i = 0; i < NUM_PLAYERS; i++) {
@@ -480,7 +545,7 @@
         startedAt: null
       });
     }
-    return { players, turns: [] };
+    return { players, turns: [], game: defaultGameClock(), fightMode: false };
   }
 
   let state = loadState() || defaultState();
@@ -489,6 +554,12 @@
   }
   if (!Array.isArray(state.turns)) {
     state.turns = [];
+  }
+  if (!state.game) {
+    state.game = defaultGameClock();
+  }
+  if (typeof state.fightMode !== 'boolean') {
+    state.fightMode = false;
   }
   state.players.forEach((p, i) => {
     if (!p.avatar) p.avatar = AVATARS[i];
@@ -514,7 +585,15 @@
     return player.elapsedMs;
   }
 
+  function startGameClockIfNeeded(now) {
+    if (!state.game.running) {
+      state.game.running = true;
+      state.game.startedAt = now;
+    }
+  }
+
   function toggleTimer(index) {
+    if (state.fightMode) return;
     const now = Date.now();
     const p = state.players[index];
     const wasRunning = p.running;
@@ -530,6 +609,28 @@
     if (!wasRunning) {
       p.running = true;
       p.startedAt = now;
+      startGameClockIfNeeded(now);
+    }
+    saveState();
+    render();
+  }
+
+  function setFightMode(on) {
+    const now = Date.now();
+    if (on) {
+      state.players.forEach((other, otherIndex) => {
+        if (other.running) {
+          const durationMs = now - other.startedAt;
+          other.elapsedMs += durationMs;
+          other.running = false;
+          other.startedAt = null;
+          state.turns.push({ index: otherIndex, name: other.name, durationMs });
+        }
+      });
+      startGameClockIfNeeded(now);
+      state.fightMode = true;
+    } else {
+      state.fightMode = false;
     }
     saveState();
     render();
@@ -590,7 +691,7 @@
   }
 
   function renderStatsInto(chartEl, totalEl, longestEl) {
-    const total = state.players.reduce((sum, p) => sum + currentElapsed(p), 0);
+    const total = currentElapsed(state.game);
     const sorted = state.players
       .map((p, i) => ({ name: p.name, avatar: p.avatar, index: i, elapsed: currentElapsed(p) }))
       .sort((a, b) => b.elapsed - a.elapsed);
@@ -652,6 +753,12 @@
   });
 
   function render() {
+    container.classList.toggle('fight-mode', state.fightMode);
+    const nextPlayerBtn = document.getElementById('next-player');
+    const fightBtn = document.getElementById('fight-toggle');
+    nextPlayerBtn.disabled = state.fightMode;
+    fightBtn.textContent = state.fightMode ? 'Fight: On' : 'Fight: Off';
+    fightBtn.classList.toggle('active', state.fightMode);
     state.players.forEach((player, index) => {
       const { card, avatar, timeEl, toggleBtn, nameInput } = cards[index];
       timeEl.textContent = formatTime(currentElapsed(player));
@@ -704,6 +811,12 @@
         state.turns.push({ index, name: p.name, durationMs });
       }
     });
+    if (state.game.running) {
+      state.game.elapsedMs += now - state.game.startedAt;
+      state.game.running = false;
+      state.game.startedAt = null;
+    }
+    state.fightMode = false;
     saveState();
     render();
     renderStatsInto(
@@ -806,9 +919,17 @@
       return { name: p.name, avatar: p.avatar, elapsedMs: 0, running: false, startedAt: null };
     });
     state.turns = [];
+    state.game = defaultGameClock();
+    state.fightMode = false;
     saveState();
     render();
     orderModal.hidden = true;
+  });
+
+  document.getElementById('next-player').addEventListener('click', advanceTurn);
+
+  document.getElementById('fight-toggle').addEventListener('click', () => {
+    setFightMode(!state.fightMode);
   });
 
   const VOICE_TRIGGER_WORDS = ['hraj', 'hrajes'];
