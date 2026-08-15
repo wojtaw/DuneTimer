@@ -112,20 +112,179 @@
     background: var(--accent-active);
     color: #fff;
   }
-  .reset-btn {
+  .stats {
+    width: 100%;
+    max-width: 560px;
+    margin-top: clamp(0.5rem, 2.5vw, 1rem);
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: clamp(0.6rem, 3vw, 1.25rem);
+  }
+  .stats-total {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: clamp(0.7rem, 2.5vw, 0.85rem);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .stats-total strong {
+    color: var(--accent);
+    font-size: clamp(1rem, 4vw, 1.4rem);
+    font-variant-numeric: tabular-nums;
+    display: block;
+    letter-spacing: 0.03em;
+    margin-top: 0.15rem;
+  }
+  .stat-chart {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.4rem, 2vw, 0.6rem);
+    margin: clamp(0.6rem, 3vw, 0.9rem) 0;
+  }
+  .stat-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .stat-avatar {
+    width: clamp(26px, 7vw, 36px);
+    height: clamp(26px, 7vw, 36px);
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--border);
+    flex-shrink: 0;
+  }
+  .stat-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .stat-name-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: clamp(0.68rem, 2.6vw, 0.85rem);
+    margin-bottom: 0.2rem;
+  }
+  .stat-name {
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .stat-pct {
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .stat-bar-track {
+    background: rgba(255, 255, 255, 0.07);
+    border-radius: 6px;
+    height: 9px;
+    overflow: hidden;
+  }
+  .stat-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-active));
+    border-radius: 6px;
+    transition: width 0.3s;
+  }
+  .stats-longest {
+    text-align: center;
+    font-size: clamp(0.68rem, 2.6vw, 0.85rem);
+    color: var(--text-dim);
+    border-top: 1px solid var(--border);
+    padding-top: clamp(0.4rem, 2vw, 0.6rem);
+  }
+  .actions {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: clamp(0.75rem, 3vw, 1.5rem);
+  }
+  .reset-btn, .end-game-btn {
     background: transparent;
     border: 1px solid var(--border);
     color: var(--text-dim);
-    padding: clamp(0.6rem, 2vw, 1rem) clamp(1.5rem, 6vw, 3rem);
+    padding: clamp(0.6rem, 2vw, 0.9rem) clamp(1.1rem, 5vw, 2rem);
     border-radius: 8px;
     cursor: pointer;
-    margin-top: clamp(0.75rem, 3vw, 2rem);
     font-size: 0.85rem;
     letter-spacing: 0.05em;
   }
   .reset-btn:hover {
     border-color: var(--accent);
     color: var(--accent);
+  }
+  .end-game-btn {
+    border-color: var(--accent-active);
+    color: var(--accent-active);
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .end-game-btn:hover {
+    background: var(--accent-active);
+    color: #fff;
+  }
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 7, 5, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    z-index: 10;
+  }
+  .modal-overlay[hidden] {
+    display: none;
+  }
+  .modal {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: clamp(1rem, 4vw, 2rem);
+    width: 100%;
+    max-width: 480px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal h2 {
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--accent-active);
+    margin: 0 0 1rem;
+    font-size: clamp(1.1rem, 5vw, 1.6rem);
+  }
+  .modal-actions {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: clamp(1rem, 4vw, 1.5rem);
+  }
+  .modal-actions button {
+    flex: 1;
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.85rem;
+  }
+  #modal-close {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+  #modal-close:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  #modal-new-game {
+    background: var(--accent);
+    color: #1a1410;
   }
 </style>
 </head>
@@ -135,7 +294,29 @@
 
 <div class="players" id="players"></div>
 
-<button class="reset-btn" id="reset-all">Reset All</button>
+<div class="stats" id="stats">
+  <div class="stats-total">Total Game Time<strong id="total-time">00:00:00</strong></div>
+  <div class="stat-chart" id="stat-chart"></div>
+  <div class="stats-longest" id="stats-longest">Longest turn: —</div>
+</div>
+
+<div class="actions">
+  <button class="end-game-btn" id="end-game">End Game</button>
+  <button class="reset-btn" id="reset-all">Reset All</button>
+</div>
+
+<div class="modal-overlay" id="game-over-modal" hidden>
+  <div class="modal">
+    <h2>Game Over</h2>
+    <div class="stats-total">Total Game Time<strong id="modal-total-time">00:00:00</strong></div>
+    <div class="stat-chart" id="modal-stat-chart"></div>
+    <div class="stats-longest" id="modal-stats-longest">Longest turn: —</div>
+    <div class="modal-actions">
+      <button id="modal-close">Close</button>
+      <button id="modal-new-game">New Game</button>
+    </div>
+  </div>
+</div>
 
 <script>
   const STORAGE_KEY = 'dune-timer-state';
@@ -162,12 +343,15 @@
         startedAt: null
       });
     }
-    return { players };
+    return { players, turns: [] };
   }
 
   let state = loadState() || defaultState();
   if (!state.players || state.players.length !== NUM_PLAYERS) {
     state = defaultState();
+  }
+  if (!Array.isArray(state.turns)) {
+    state.turns = [];
   }
 
   function saveState() {
@@ -188,6 +372,80 @@
       return player.elapsedMs + (Date.now() - player.startedAt);
     }
     return player.elapsedMs;
+  }
+
+  function computeLongestTurn() {
+    let best = null;
+    state.turns.forEach(t => {
+      if (!best || t.durationMs > best.durationMs) best = t;
+    });
+    state.players.forEach(p => {
+      if (p.running) {
+        const durationMs = Date.now() - p.startedAt;
+        if (!best || durationMs > best.durationMs) best = { name: p.name, durationMs };
+      }
+    });
+    return best;
+  }
+
+  function buildStatRow(entry, pct) {
+    const row = document.createElement('div');
+    row.className = 'stat-row';
+
+    const avatar = document.createElement('img');
+    avatar.className = 'stat-avatar';
+    avatar.src = AVATARS[entry.index];
+    avatar.alt = entry.name;
+
+    const info = document.createElement('div');
+    info.className = 'stat-info';
+
+    const nameRow = document.createElement('div');
+    nameRow.className = 'stat-name-row';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'stat-name';
+    nameSpan.textContent = entry.name;
+
+    const pctSpan = document.createElement('span');
+    pctSpan.className = 'stat-pct';
+    pctSpan.textContent = pct + '% · ' + formatTime(entry.elapsed);
+
+    nameRow.appendChild(nameSpan);
+    nameRow.appendChild(pctSpan);
+
+    const track = document.createElement('div');
+    track.className = 'stat-bar-track';
+    const fill = document.createElement('div');
+    fill.className = 'stat-bar-fill';
+    fill.style.width = pct + '%';
+    track.appendChild(fill);
+
+    info.appendChild(nameRow);
+    info.appendChild(track);
+    row.appendChild(avatar);
+    row.appendChild(info);
+    return row;
+  }
+
+  function renderStatsInto(chartEl, totalEl, longestEl) {
+    const total = state.players.reduce((sum, p) => sum + currentElapsed(p), 0);
+    const sorted = state.players
+      .map((p, i) => ({ name: p.name, index: i, elapsed: currentElapsed(p) }))
+      .sort((a, b) => b.elapsed - a.elapsed);
+
+    totalEl.textContent = formatTime(total);
+
+    chartEl.innerHTML = '';
+    sorted.forEach(entry => {
+      const pct = total > 0 ? Math.round((entry.elapsed / total) * 100) : 0;
+      chartEl.appendChild(buildStatRow(entry, pct));
+    });
+
+    const longest = computeLongestTurn();
+    longestEl.textContent = longest
+      ? 'Longest turn: ' + formatTime(longest.durationMs) + ' — ' + longest.name
+      : 'Longest turn: —';
   }
 
   const container = document.getElementById('players');
@@ -224,11 +482,13 @@
       const now = Date.now();
       const p = state.players[index];
       const wasRunning = p.running;
-      state.players.forEach(other => {
+      state.players.forEach((other, otherIndex) => {
         if (other.running) {
-          other.elapsedMs += now - other.startedAt;
+          const durationMs = now - other.startedAt;
+          other.elapsedMs += durationMs;
           other.running = false;
           other.startedAt = null;
+          state.turns.push({ index: otherIndex, name: other.name, durationMs });
         }
       });
       if (!wasRunning) {
@@ -265,16 +525,61 @@
         nameInput.value = player.name;
       }
     });
+    renderStatsInto(
+      document.getElementById('stat-chart'),
+      document.getElementById('total-time'),
+      document.getElementById('stats-longest')
+    );
   }
 
-  document.getElementById('reset-all').addEventListener('click', () => {
-    if (!confirm('Reset all names and times?')) return;
+  function resetGame() {
     state = defaultState();
     saveState();
     cards.forEach(({ nameInput }, index) => {
       nameInput.value = state.players[index].name;
     });
     render();
+  }
+
+  document.getElementById('reset-all').addEventListener('click', () => {
+    if (!confirm('Reset all names and times?')) return;
+    resetGame();
+  });
+
+  const gameOverModal = document.getElementById('game-over-modal');
+
+  document.getElementById('end-game').addEventListener('click', () => {
+    const now = Date.now();
+    state.players.forEach((p, index) => {
+      if (p.running) {
+        const durationMs = now - p.startedAt;
+        p.elapsedMs += durationMs;
+        p.running = false;
+        p.startedAt = null;
+        state.turns.push({ index, name: p.name, durationMs });
+      }
+    });
+    saveState();
+    render();
+    renderStatsInto(
+      document.getElementById('modal-stat-chart'),
+      document.getElementById('modal-total-time'),
+      document.getElementById('modal-stats-longest')
+    );
+    gameOverModal.hidden = false;
+  });
+
+  document.getElementById('modal-close').addEventListener('click', () => {
+    gameOverModal.hidden = true;
+  });
+
+  gameOverModal.addEventListener('click', (e) => {
+    if (e.target === gameOverModal) gameOverModal.hidden = true;
+  });
+
+  document.getElementById('modal-new-game').addEventListener('click', () => {
+    resetGame();
+    gameOverModal.hidden = true;
   });
 
   render();
