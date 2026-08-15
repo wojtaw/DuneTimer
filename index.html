@@ -15,49 +15,52 @@
     --border: #4a3a28;
   }
   * { box-sizing: border-box; }
+  html, body {
+    height: 100%;
+  }
   body {
     margin: 0;
-    min-height: 100vh;
     background: radial-gradient(circle at top, #2a1f14, #14100c 70%);
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 2rem 1rem;
+    padding: clamp(0.5rem, 3vw, 2rem);
   }
   h1 {
     letter-spacing: 0.15em;
     text-transform: uppercase;
     color: var(--accent);
-    font-size: 1.6rem;
-    margin-bottom: 1.5rem;
+    font-size: clamp(1rem, 4vw, 1.6rem);
+    margin: 0 0 clamp(0.5rem, 2vw, 1.5rem);
   }
   .players {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: clamp(0.4rem, 2vw, 1rem);
     width: 100%;
-    max-width: 960px;
+    max-width: 560px;
   }
   .player {
     background: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 1.25rem;
+    padding: clamp(0.5rem, 2.5vw, 1.25rem);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.75rem;
+    gap: clamp(0.25rem, 1.5vw, 0.75rem);
     transition: border-color 0.2s, box-shadow 0.2s;
+    min-width: 0;
   }
   .player.running {
     border-color: var(--accent-active);
     box-shadow: 0 0 16px rgba(232, 84, 42, 0.35);
   }
   .avatar {
-    width: 96px;
-    height: 96px;
+    width: clamp(48px, 16vw, 96px);
+    height: clamp(48px, 16vw, 96px);
     border-radius: 50%;
     object-fit: cover;
     border: 3px solid var(--border);
@@ -73,9 +76,10 @@
     border: none;
     border-bottom: 1px solid var(--border);
     color: var(--text);
-    font-size: 1.1rem;
+    font-size: clamp(0.8rem, 3vw, 1.1rem);
     text-align: center;
-    padding: 0.4rem 0.2rem;
+    padding: 0.3rem 0.2rem;
+    min-width: 0;
   }
   .name-input:focus {
     outline: none;
@@ -83,14 +87,14 @@
   }
   .time {
     font-variant-numeric: tabular-nums;
-    font-size: 2.2rem;
+    font-size: clamp(1.1rem, 5.5vw, 2.2rem);
     font-weight: 600;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.03em;
   }
   .toggle-btn {
     width: 100%;
-    padding: 0.7rem;
-    font-size: 1rem;
+    padding: clamp(0.4rem, 2vw, 0.7rem);
+    font-size: clamp(0.75rem, 3vw, 1rem);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -112,11 +116,11 @@
     background: transparent;
     border: 1px solid var(--border);
     color: var(--text-dim);
-    padding: 1.5rem 3rem;
+    padding: clamp(0.6rem, 2vw, 1rem) clamp(1.5rem, 6vw, 3rem);
     border-radius: 8px;
     cursor: pointer;
-    margin-top: 2rem;
-    font-size: 0.9rem;
+    margin-top: clamp(0.75rem, 3vw, 2rem);
+    font-size: 0.85rem;
     letter-spacing: 0.05em;
   }
   .reset-btn:hover {
