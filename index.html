@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dune Timer</title>
+<style>
+  :root {
+    --bg: #1a1410;
+    --card-bg: #2a2118;
+    --accent: #d99b4a;
+    --accent-active: #e8542a;
+    --text: #f0e6d8;
+    --text-dim: #a89a86;
+    --border: #4a3a28;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(circle at top, #2a1f14, #14100c 70%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem;
+  }
+  h1 {
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-size: 1.6rem;
+    margin-bottom: 1.5rem;
+  }
+  .players {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    width: 100%;
+    max-width: 960px;
+  }
+  .player {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .player.running {
+    border-color: var(--accent-active);
+    box-shadow: 0 0 16px rgba(232, 84, 42, 0.35);
+  }
+  .name-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-size: 1.1rem;
+    text-align: center;
+    padding: 0.4rem 0.2rem;
+  }
+  .name-input:focus {
+    outline: none;
+    border-bottom-color: var(--accent);
+  }
+  .time {
+    font-variant-numeric: tabular-nums;
+    font-size: 2.2rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+  .toggle-btn {
+    width: 100%;
+    padding: 0.7rem;
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    background: var(--accent);
+    color: #1a1410;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .toggle-btn:active {
+    transform: scale(0.97);
+  }
+  .toggle-btn.running {
+    background: var(--accent-active);
+    color: #fff;
+  }
+  .reset-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 1.5rem 3rem;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 2rem;
+    font-size: 0.9rem;
+    letter-spacing: 0.05em;
+  }
+  .reset-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+</style>
+</head>
+<body>
+
+<h1>Dune Timer</h1>
+
+<div class="players" id="players"></div>
+
+<button class="reset-btn" id="reset-all">Reset All</button>
+
+<script>
+  const STORAGE_KEY = 'dune-timer-state';
+  const NUM_PLAYERS = 4;
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return null;
+  }
+
+  function defaultState() {
+    const players = [];
+    for (let i = 0; i < NUM_PLAYERS; i++) {
+      players.push({
+        name: 'Player ' + (i + 1),
+        elapsedMs: 0,
+        running: false,
+        startedAt: null
+      });
+    }
+    return { players };
+  }
+
+  let state = loadState() || defaultState();
+  if (!state.players || state.players.length !== NUM_PLAYERS) {
+    state = defaultState();
+  }
+
+  function saveState() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function formatTime(ms) {
+    const totalSeconds = Math.floor(ms / 1000);
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    const pad = n => String(n).padStart(2, '0');
+    return pad(h) + ':' + pad(m) + ':' + pad(s);
+  }
+
+  function currentElapsed(player) {
+    if (player.running) {
+      return player.elapsedMs + (Date.now() - player.startedAt);
+    }
+    return player.elapsedMs;
+  }
+
+  const container = document.getElementById('players');
+  const cards = [];
+
+  state.players.forEach((player, index) => {
+    const card = document.createElement('div');
+    card.className = 'player';
+
+    const nameInput = document.createElement('input');
+    nameInput.className = 'name-input';
+    nameInput.type = 'text';
+    nameInput.value = player.name;
+    nameInput.maxLength = 30;
+    nameInput.addEventListener('input', () => {
+      state.players[index].name = nameInput.value;
+      saveState();
+    });
+
+    const timeEl = document.createElement('div');
+    timeEl.className = 'time';
+    timeEl.textContent = formatTime(currentElapsed(player));
+
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'toggle-btn';
+    toggleBtn.textContent = 'Start';
+    toggleBtn.addEventListener('click', () => {
+      const p = state.players[index];
+      if (p.running) {
+        p.elapsedMs += Date.now() - p.startedAt;
+        p.running = false;
+        p.startedAt = null;
+      } else {
+        p.running = true;
+        p.startedAt = Date.now();
+      }
+      saveState();
+      render();
+    });
+
+    card.appendChild(nameInput);
+    card.appendChild(timeEl);
+    card.appendChild(toggleBtn);
+    container.appendChild(card);
+
+    cards.push({ card, timeEl, toggleBtn, nameInput });
+  });
+
+  function render() {
+    state.players.forEach((player, index) => {
+      const { card, timeEl, toggleBtn, nameInput } = cards[index];
+      timeEl.textContent = formatTime(currentElapsed(player));
+      if (player.running) {
+        card.classList.add('running');
+        toggleBtn.classList.add('running');
+        toggleBtn.textContent = 'Stop';
+      } else {
+        card.classList.remove('running');
+        toggleBtn.classList.remove('running');
+        toggleBtn.textContent = 'Start';
+      }
+      if (document.activeElement !== nameInput) {
+        nameInput.value = player.name;
+      }
+    });
+  }
+
+  document.getElementById('reset-all').addEventListener('click', () => {
+    if (!confirm('Reset all names and times?')) return;
+    state = defaultState();
+    saveState();
+    cards.forEach(({ nameInput }, index) => {
+      nameInput.value = state.players[index].name;
+    });
+    render();
+  });
+
+  render();
+  setInterval(render, 1000);
+</script>
+
+</body>
+</html>
