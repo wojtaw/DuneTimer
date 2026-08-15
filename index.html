@@ -217,14 +217,19 @@
     toggleBtn.className = 'toggle-btn';
     toggleBtn.textContent = 'Start';
     toggleBtn.addEventListener('click', () => {
+      const now = Date.now();
       const p = state.players[index];
-      if (p.running) {
-        p.elapsedMs += Date.now() - p.startedAt;
-        p.running = false;
-        p.startedAt = null;
-      } else {
+      const wasRunning = p.running;
+      state.players.forEach(other => {
+        if (other.running) {
+          other.elapsedMs += now - other.startedAt;
+          other.running = false;
+          other.startedAt = null;
+        }
+      });
+      if (!wasRunning) {
         p.running = true;
-        p.startedAt = Date.now();
+        p.startedAt = now;
       }
       saveState();
       render();
