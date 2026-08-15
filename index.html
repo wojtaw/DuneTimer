@@ -448,18 +448,28 @@
     letter-spacing: 0.05em;
     font-size: 0.85rem;
   }
-  #modal-close, #order-cancel {
+  #modal-close, #order-cancel, #download-html, #download-image {
     background: transparent;
     border: 1px solid var(--border);
     color: var(--text-dim);
   }
-  #modal-close:hover, #order-cancel:hover {
+  #modal-close:hover, #order-cancel:hover, #download-html:hover, #download-image:hover {
     border-color: var(--accent);
     color: var(--accent);
   }
   #modal-new-game, #order-start {
     background: var(--accent);
     color: #1a1410;
+  }
+  .rank-label {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: clamp(0.68rem, 2.6vw, 0.8rem);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: clamp(0.8rem, 3vw, 1.2rem);
+    border-top: 1px solid var(--border);
+    padding-top: clamp(0.6rem, 2.5vw, 0.9rem);
   }
 </style>
 </head>
@@ -497,6 +507,14 @@
     <div class="stats-total">Total Game Time<strong id="modal-total-time">00:00:00</strong></div>
     <div class="stat-chart" id="modal-stat-chart"></div>
     <div class="stats-longest" id="modal-stats-longest">Longest turn: —</div>
+
+    <div class="rank-label">Final Placement — set who won</div>
+    <div class="order-list" id="rank-list"></div>
+
+    <div class="modal-actions">
+      <button id="download-html">Save HTML</button>
+      <button id="download-image">Save Image</button>
+    </div>
     <div class="modal-actions">
       <button id="modal-close">Close</button>
       <button id="modal-new-game">New Game</button>
@@ -545,7 +563,7 @@
         startedAt: null
       });
     }
-    return { players, turns: [], game: defaultGameClock(), fightMode: false };
+    return { players, turns: [], game: defaultGameClock(), fightMode: false, finalRanking: null };
   }
 
   let state = loadState() || defaultState();
@@ -560,6 +578,9 @@
   }
   if (typeof state.fightMode !== 'boolean') {
     state.fightMode = false;
+  }
+  if (!Array.isArray(state.finalRanking)) {
+    state.finalRanking = null;
   }
   state.players.forEach((p, i) => {
     if (!p.avatar) p.avatar = AVATARS[i];
@@ -824,6 +845,7 @@
       document.getElementById('modal-total-time'),
       document.getElementById('modal-stats-longest')
     );
+    openRankList();
     gameOverModal.hidden = false;
   });
 
@@ -903,6 +925,275 @@
     orderModal.hidden = false;
   }
 
+  const rankList = document.getElementById('rank-list');
+  let rankDraft = [];
+
+  function buildRankList() {
+    rankList.innerHTML = '';
+    rankDraft.forEach((origIndex, pos) => {
+      const player = state.players[origIndex];
+
+      const row = document.createElement('div');
+      row.className = 'order-row';
+
+      const num = document.createElement('div');
+      num.className = 'order-num';
+      num.textContent = (pos + 1) + '.';
+
+      const avatar = document.createElement('img');
+      avatar.className = 'order-avatar';
+      avatar.src = player.avatar;
+      avatar.alt = player.name;
+
+      const name = document.createElement('div');
+      name.className = 'order-name';
+      name.textContent = player.name;
+
+      const btns = document.createElement('div');
+      btns.className = 'order-btns';
+
+      const upBtn = document.createElement('button');
+      upBtn.type = 'button';
+      upBtn.textContent = '▲';
+      upBtn.disabled = pos === 0;
+      upBtn.addEventListener('click', () => {
+        [rankDraft[pos - 1], rankDraft[pos]] = [rankDraft[pos], rankDraft[pos - 1]];
+        state.finalRanking = rankDraft.slice();
+        saveState();
+        buildRankList();
+      });
+
+      const downBtn = document.createElement('button');
+      downBtn.type = 'button';
+      downBtn.textContent = '▼';
+      downBtn.disabled = pos === rankDraft.length - 1;
+      downBtn.addEventListener('click', () => {
+        [rankDraft[pos], rankDraft[pos + 1]] = [rankDraft[pos + 1], rankDraft[pos]];
+        state.finalRanking = rankDraft.slice();
+        saveState();
+        buildRankList();
+      });
+
+      btns.appendChild(upBtn);
+      btns.appendChild(downBtn);
+
+      row.appendChild(num);
+      row.appendChild(avatar);
+      row.appendChild(name);
+      row.appendChild(btns);
+      rankList.appendChild(row);
+    });
+  }
+
+  function openRankList() {
+    if (state.finalRanking && state.finalRanking.length === NUM_PLAYERS) {
+      rankDraft = state.finalRanking.slice();
+    } else {
+      rankDraft = state.players
+        .map((p, i) => ({ i, elapsed: currentElapsed(p) }))
+        .sort((a, b) => b.elapsed - a.elapsed)
+        .map(e => e.i);
+    }
+    buildRankList();
+  }
+
+  const PLACEMENT_LABELS = ['1st', '2nd', '3rd', '4th'];
+
+  function getRankedEntries() {
+    const order = (state.finalRanking && state.finalRanking.length === NUM_PLAYERS)
+      ? state.finalRanking
+      : rankDraft;
+    return order.map(index => ({
+      index,
+      name: state.players[index].name,
+      avatar: state.players[index].avatar,
+      elapsed: currentElapsed(state.players[index])
+    }));
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
+  function toDataURL(url) {
+    return fetch(url)
+      .then(r => r.blob())
+      .then(blob => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      }));
+  }
+
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  async function exportResultsHtml() {
+    const entries = getRankedEntries();
+    const total = currentElapsed(state.game);
+    const longest = computeLongestTurn();
+    const dateStr = new Date().toLocaleString();
+    const avatarData = await Promise.all(entries.map(e => toDataURL(e.avatar)));
+
+    const rowsHtml = entries.map((e, i) => `
+      <div style="display:flex;align-items:center;gap:16px;padding:14px 18px;border:1px solid #4a3a28;border-radius:10px;background:#2a2118;margin-bottom:10px;">
+        <div style="width:36px;font-weight:700;color:#d99b4a;">${PLACEMENT_LABELS[i] || (i + 1) + 'th'}</div>
+        <img src="${avatarData[i]}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #4a3a28;">
+        <div style="flex:1;">
+          <div style="font-size:18px;color:#f0e6d8;font-weight:600;">${escapeHtml(e.name)}</div>
+          <div style="font-size:13px;color:#a89a86;">${formatTime(e.elapsed)}</div>
+        </div>
+      </div>
+    `).join('');
+
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Dune Timer Results — ${dateStr}</title></head>
+<body style="margin:0;background:#14100c;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:32px;color:#f0e6d8;">
+  <div style="max-width:520px;margin:0 auto;">
+    <h1 style="text-align:center;color:#d99b4a;letter-spacing:0.15em;text-transform:uppercase;font-size:22px;">Dune Timer — Game Results</h1>
+    <p style="text-align:center;color:#a89a86;font-size:13px;margin-top:-8px;">${dateStr}</p>
+    ${rowsHtml}
+    <div style="text-align:center;margin-top:20px;color:#a89a86;font-size:13px;">
+      <div>Total Game Time: <strong style="color:#d99b4a;">${formatTime(total)}</strong></div>
+      ${longest ? '<div style="margin-top:6px;">Longest turn: ' + formatTime(longest.durationMs) + ' — ' + escapeHtml(longest.name) + '</div>' : ''}
+    </div>
+  </div>
+</body></html>`;
+
+    downloadBlob(new Blob([html], { type: 'text/html' }), 'dune-timer-results.html');
+  }
+
+  async function exportResultsImage() {
+    const entries = getRankedEntries();
+    const total = currentElapsed(state.game);
+    const longest = computeLongestTurn();
+
+    const W = 800, ROW_H = 150, HEADER_H = 170, FOOTER_H = 100;
+    const H = HEADER_H + entries.length * ROW_H + FOOTER_H;
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    const bgGrad = ctx.createRadialGradient(W / 2, 0, 50, W / 2, 0, H);
+    bgGrad.addColorStop(0, '#2a1f14');
+    bgGrad.addColorStop(1, '#14100c');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.fillStyle = '#d99b4a';
+    ctx.font = '700 32px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('DUNE TIMER', W / 2, 55);
+    ctx.fillStyle = '#a89a86';
+    ctx.font = '600 18px -apple-system, sans-serif';
+    ctx.fillText('Game Results — ' + new Date().toLocaleDateString(), W / 2, 85);
+    ctx.fillStyle = '#f0e6d8';
+    ctx.font = '700 16px -apple-system, sans-serif';
+    ctx.fillText('Total Game Time: ' + formatTime(total), W / 2, 120);
+
+    const avatarImgs = await Promise.all(entries.map(e => loadImage(e.avatar)));
+
+    entries.forEach((e, i) => {
+      const y = HEADER_H + i * ROW_H;
+      const cardH = ROW_H - 16;
+
+      roundRect(ctx, 40, y, W - 80, cardH, 14);
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      ctx.fill();
+      ctx.strokeStyle = i === 0 ? '#d99b4a' : '#4a3a28';
+      ctx.lineWidth = i === 0 ? 2 : 1;
+      ctx.stroke();
+
+      ctx.fillStyle = '#d99b4a';
+      ctx.font = '700 20px -apple-system, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText((PLACEMENT_LABELS[i] || (i + 1) + 'th').toUpperCase(), 64, y + 45);
+
+      const cx = 170, cy = y + cardH / 2, r = 40;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(avatarImgs[i], cx - r, cy - r, r * 2, r * 2);
+      ctx.restore();
+      ctx.strokeStyle = '#4a3a28';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.fillStyle = '#f0e6d8';
+      ctx.font = '700 24px -apple-system, sans-serif';
+      ctx.fillText(e.name, 235, y + 45);
+      ctx.fillStyle = '#a89a86';
+      ctx.font = '500 16px -apple-system, sans-serif';
+      ctx.fillText(formatTime(e.elapsed), 235, y + 72);
+
+      const pct = total > 0 ? e.elapsed / total : 0;
+      const barX = 235, barY = y + 90, barW = 470, barH = 10;
+      roundRect(ctx, barX, barY, barW, barH, 5);
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      ctx.fill();
+      const barGrad = ctx.createLinearGradient(barX, 0, barX + barW, 0);
+      barGrad.addColorStop(0, '#d99b4a');
+      barGrad.addColorStop(1, '#e8542a');
+      roundRect(ctx, barX, barY, Math.max(6, barW * pct), barH, 5);
+      ctx.fillStyle = barGrad;
+      ctx.fill();
+    });
+
+    if (longest) {
+      ctx.fillStyle = '#a89a86';
+      ctx.font = '500 15px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Longest turn: ' + formatTime(longest.durationMs) + ' — ' + longest.name, W / 2, H - 40);
+    }
+
+    canvas.toBlob(blob => {
+      downloadBlob(blob, 'dune-timer-results.jpg');
+    }, 'image/jpeg', 0.92);
+  }
+
+  document.getElementById('download-html').addEventListener('click', () => {
+    exportResultsHtml().catch(err => alert('Could not save HTML: ' + err.message));
+  });
+
+  document.getElementById('download-image').addEventListener('click', () => {
+    exportResultsImage().catch(err => alert('Could not save image: ' + err.message));
+  });
+
   document.getElementById('start-new-game').addEventListener('click', openOrderModal);
 
   document.getElementById('order-cancel').addEventListener('click', () => {
@@ -921,6 +1212,7 @@
     state.turns = [];
     state.game = defaultGameClock();
     state.fightMode = false;
+    state.finalRanking = null;
     saveState();
     render();
     orderModal.hidden = true;
